@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#183f36"><title>Comptoir — Coûts & marges</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<aside class="sidebar"><a class="brand" href="#analyse"><span class="brand-icon">C.</span><span>comptoir<small>LE PILOTAGE DE VOTRE BAR</small></span></a><div class="nav-label">VOTRE ESPACE</div><nav aria-label="Navigation principale"><button data-tab="analyse">◫ <span>Analyse & simulation</span></button><button data-tab="recettes">♧ <span>Carte des boissons</span></button><button data-tab="produits">▦ <span>Produits & achats</span></button><button data-tab="donnees">⇄ <span>Données & sauvegardes</span></button></nav><div class="sidebar-bottom"><span class="dot"></span> Fonctionne hors ligne<p>Vos données restent dans<br>ce navigateur.</p><button class="backup" id="quick-export">↓ Exporter une sauvegarde</button></div></aside>
+<main><header><span>GESTION DU BAR <span class="slash">/</span> <span id="breadcrumb">Analyse</span></span><span class="local-badge">● Espace local</span></header><div id="app"></div><footer>Comptoir · Des recettes précises, des décisions éclairées.<span>Coûts HT · Prix de vente TTC</span></footer></main>
+<dialog id="editor"><div id="editor-body"></div></dialog><div id="toast" role="status"></div>
+<script src="seed.js"></script><script src="core.js"></script><script src="app.js"></script>
+</body></html>

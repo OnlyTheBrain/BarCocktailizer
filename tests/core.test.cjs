@@ -1,0 +1,16 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const core = require('../core.js');
+require('../seed.js');
+const db = globalThis.BAR_SEED;
+const approx=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
+test('Données sources valides : 20 produits et 7 recettes',()=>{core.validate(db);assert.equal(db.products.length,20);assert.equal(db.recipes.length,7);});
+test('Total des boissons et consignes conforme à la facture',()=>{const goods=db.products.filter(p=>p.id!=='perrier').reduce((n,p)=>n+p.price*p.quantity,0);approx(goods,767.17);approx(goods+50,817.17);});
+test('Fût Moretti : facturation au litre convertie en fût de 8 litres',()=>{const p=db.products.find(p=>p.id==='moretti');approx(p.price/p.volume*50,2.09);assert.equal(p.quantity,3);});
+test('Hugo : ingrédients, HT/TTC, marge sur vente HT',()=>{const r=db.recipes[0],c=core.cost(r,db.products),m=core.metrics(c.value,r.price,r.tax);approx(c.value,18.25/70*4+7.7/75*6+1.11/33*6);assert.equal(c.complete,true);approx(m.net,10/1.2);approx(m.margin,m.net-c.value);approx(m.rate,m.margin/m.net*100);});
+test('Cible de taux de marque réversible',()=>{const price=core.targetPrice(2,75,20);approx(price,9.6);approx(core.metrics(2,price,20).rate,75);assert.equal(core.targetPrice(2,100,20),null);});
+test('Pertes et frais par verre',()=>{const r={ingredients:[{productId:'aperol',cl:10}],loss:10,extra:0.25};approx(core.cost(r,db.products).value,1.795/0.9+0.25);});
+test('Prix absent, négatif et coût nul',()=>{assert.equal(core.metrics(2,null,20).rate,null);assert.equal(core.metrics(2,0,20).margin,null);assert.ok(core.metrics(10,5,20).margin<0);assert.equal(core.metrics(0,5,20).rate,100);});
+test('Ingrédient inconnu ou non chiffré bloque le statut complet',()=>{const missing={ingredients:[{productId:'absent',cl:2}],loss:0,extra:0};assert.equal(core.cost(missing,db.products).complete,false);const products=structuredClone(db.products);products[0].price=null;missing.ingredients[0].productId=products[0].id;assert.equal(core.cost(missing,products).complete,false);});
+test('Import rejette doublons, valeurs négatives, références cassées, types invalides',()=>{for(const mutate of [d=>d.products.push(d.products[0]),d=>d.products[0].volume=0,d=>d.products[0].price=-1,d=>d.recipes[0].ingredients[0].productId='absent',d=>d.recipes[0].loss=100,d=>d.recipes[0].extra=Infinity,d=>d.recipes[0].ingredients=[],d=>d.products[0].name={}]){const d=structuredClone(db);mutate(d);assert.throws(()=>core.validate(d));}});
+test('JSON exporté compatible avec la restauration',()=>{assert.deepEqual(core.validate(JSON.parse(JSON.stringify(db))),db);});
