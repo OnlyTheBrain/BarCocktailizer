@@ -8,7 +8,7 @@ Double-cliquez sur **index.html** pour ouvrir l’application dans un navigateur
 
 - **Analyse & simulation** : coûts HT, prix TTC, marge brute, taux de marque, simulation par prix ou pourcentage, projection du nombre de verres. Cliquer sur « Appliquer ce prix » pour enregistrer une simulation.
 - **Carte des boissons** : créer, modifier et supprimer des recettes, dosages en cl, prix TTC et TVA de vente. Une boisson simple se crée avec un seul ingrédient (par exemple 50 cl de bière ou 33 cl de soda).
-- **Produits & achats** : prix d’achat HT par bouteille ou fût, contenance en cl, catégorie, quantité de référence et TVA d’achat informative. Les changements de prix recalculent les recettes.
+- **Produits & achats** : prix d’achat HT par bouteille ou fût, contenance en cl, catégorie, quantité de référence et TVA d’achat. Les changements de prix recalculent les recettes.
 - **Données & sauvegardes** : export/import JSON et export CSV de l’analyse. L’import valide les données avant remplacement et demande confirmation.
 
 La sauvegarde automatique utilise `localStorage`. Elle dépend du navigateur et de l’emplacement du fichier. Exportez régulièrement un JSON, notamment avant de déplacer le dossier ou d’effacer les données du navigateur. En cas d’impossibilité d’écriture, une alerte invite à exporter la session en mémoire.
@@ -34,7 +34,7 @@ Coût recette HT = somme des ingrédients / (1 − pertes / 100) + frais HT par 
 
 Vente HT = prix TTC / (1 + TVA de vente / 100). Marge brute = vente HT − coût recette HT. **Taux de marque** = marge brute / vente HT × 100. Ce pourcentage est distinct du taux de marge sur coût d’achat.
 
-Les cocktails fournis sont paramétrés avec une TVA de vente de 20 %, modifiable. Les prix d’achat sont utilisés HT ; la TVA d’achat est conservée à titre informatif. Ce modèle suppose un suivi en HT.
+Les cocktails fournis sont paramétrés avec une TVA de vente de 20 %, modifiable. Les prix d’achat sont utilisés HT ; la TVA d’achat est utilisée pour le coût TTC. Ce modèle suppose un suivi en HT.
 
 Les coûts ne comprennent pas les salaires ni les charges fixes. Pertes et frais par verre (glace, garnitures…) sont initialisés à zéro et peuvent être renseignés. Aucun suivi des ventes réelles ou des consommations de stock n’est effectué. Les quantités sont des références d’achat, pas un inventaire actuel garanti. La projection est théorique ; les indicateurs globaux supposent une vente de chaque recette complète avec prix.
 
@@ -52,3 +52,13 @@ Avec Node.js installé : `node --test tests/core.test.cjs`.
 
 Pinte 50 cl à 7 € TTC, demi-pinte 25 cl à 4 € TTC et pichet 1 L à 13 € TTC. Coûts HT hors pertes : 2,09 €, 1,045 € et 4,18 €. Les anciennes sauvegardes reçoivent automatiquement ces formats au prochain chargement, avec les prix Moretti confirmés ; les autres prix et recettes sont conservés.
 
+
+## Analyse TTC, catégories et sauvegarde du 15/10/2026
+
+La base par défaut reprend les 20 produits et les 20 boissons de la sauvegarde utilisateur du 15/10/2026, avec leurs identifiants, prix, dosages et catégories. Elle comprend 10 nouveaux formats de vins, au verre et à la bouteille. Une mise à jour ajoute les éléments absents aux bases locales existantes sans écraser leurs modifications ; elle ne réintroduit pas un élément supprimé après cette mise à jour.
+
+Le tableau de rentabilité affiche les coûts HT et TTC côte à côte. Le coût TTC est la somme des coûts des ingrédients avec leur TVA d’achat respective, ajustée des pertes, plus les frais TTC par verre. La TVA d’achat des frais est réglable dans la recette (20 % par défaut pour les anciennes recettes). La TVA de vente ne sert pas au calcul du coût d’achat TTC. Les marges restent calculées en HT.
+
+Le filtre de catégorie de l’analyse s’applique au tableau, aux indicateurs de boissons et au choix du simulateur. L’export CSV inclut toutes les boissons avec leur catégorie et leurs coûts HT/TTC.
+
+Les catégories se choisissent dans une liste commune aux produits et aux boissons. Utiliser « Nouvelle catégorie » dans un formulaire ou le panneau « Catégories » dans « Données & sauvegardes » pour en créer une. Elles sont incluses dans l’export JSON, même lorsqu’elles ne sont pas utilisées. Les anciennes sauvegardes récupèrent automatiquement leurs catégories à partir des produits et recettes.

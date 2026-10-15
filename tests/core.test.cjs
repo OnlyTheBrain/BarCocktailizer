@@ -4,10 +4,10 @@ const core = require('../core.js');
 require('../seed.js');
 const db = globalThis.BAR_SEED;
 const approx=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
-test('Données sources valides : 20 produits et 10 recettes',()=>{core.validate(db);assert.equal(db.products.length,20);assert.equal(db.recipes.length,10);});
+test('Données sources valides : 20 produits et 20 recettes',()=>{core.validate(db);assert.equal(db.products.length,20);assert.equal(db.recipes.length,20);});
 test('Formats Moretti : doses, coûts et prix TTC confirmés',()=>{for(const [id,cl,value,price] of [['moretti-pinte',50,2.09,7],['moretti-demi',25,1.045,4],['moretti-pichet',100,4.18,13]]){const r=db.recipes.find(r=>r.id===id);assert.equal(r.ingredients[0].cl,cl);assert.equal(r.price,price);approx(core.cost(r,db.products).value,value);}});
 test('Prix Moretti appliqués aux formats déjà ajoutés, une seule fois',()=>{const old=structuredClone(db);old.updates=['moretti-formats-v1'];old.recipes.find(r=>r.id==='moretti-pinte').price=null;assert.equal(core.migrate(old,db),true);const r=old.recipes.find(r=>r.id==='moretti-pinte');assert.equal(r.price,7);r.price=8;assert.equal(core.migrate(old,db),false);assert.equal(r.price,8);});
-test('Mise à jour des anciennes sauvegardes sans écraser les saisies ni réajouter les suppressions ultérieures',()=>{const old=structuredClone(db);delete old.updates;old.recipes=old.recipes.filter(r=>!r.id.startsWith('moretti-'));old.recipes[0].price=12;old.products[0].price=40;assert.equal(core.migrate(old,db),true);core.validate(old);assert.equal(old.recipes.length,10);assert.equal(old.recipes[0].price,12);assert.equal(old.products[0].price,40);old.recipes=old.recipes.filter(r=>r.id!=='moretti-pinte');assert.equal(core.migrate(old,db),false);assert.equal(old.recipes.length,9);});
+test('Mise à jour des anciennes sauvegardes sans écraser les saisies ni réajouter les suppressions ultérieures',()=>{const old=structuredClone(db);delete old.updates;old.recipes=old.recipes.filter(r=>!r.id.startsWith('moretti-'));old.recipes[0].price=12;old.products[0].price=40;assert.equal(core.migrate(old,db),true);core.validate(old);assert.equal(old.recipes.length,20);assert.equal(old.recipes[0].price,12);assert.equal(old.products[0].price,40);old.recipes=old.recipes.filter(r=>r.id!=='moretti-pinte');assert.equal(core.migrate(old,db),false);assert.equal(old.recipes.length,19);});
 test('Total des boissons et consignes conforme à la facture',()=>{const goods=db.products.filter(p=>p.id!=='perrier').reduce((n,p)=>n+p.price*p.quantity,0);approx(goods,767.17);approx(goods+50,817.17);});
 test('Fût Moretti : facturation au litre convertie en fût de 8 litres',()=>{const p=db.products.find(p=>p.id==='moretti');approx(p.price/p.volume*50,2.09);assert.equal(p.quantity,3);});
 test('Hugo : ingrédients, HT/TTC, marge sur vente HT',()=>{const r=db.recipes[0],c=core.cost(r,db.products),m=core.metrics(c.value,r.price,r.tax);approx(c.value,18.25/70*4+7.7/75*6+1.11/33*6);assert.equal(c.complete,true);approx(m.net,10/1.2);approx(m.margin,m.net-c.value);approx(m.rate,m.margin/m.net*100);});
@@ -17,3 +17,29 @@ test('Prix absent, négatif et coût nul',()=>{assert.equal(core.metrics(2,null,
 test('Ingrédient inconnu ou non chiffré bloque le statut complet',()=>{const missing={ingredients:[{productId:'absent',cl:2}],loss:0,extra:0};assert.equal(core.cost(missing,db.products).complete,false);const products=structuredClone(db.products);products[0].price=null;missing.ingredients[0].productId=products[0].id;assert.equal(core.cost(missing,products).complete,false);});
 test('Import rejette doublons, valeurs négatives, références cassées, types invalides',()=>{for(const mutate of [d=>d.products.push(d.products[0]),d=>d.products[0].volume=0,d=>d.products[0].price=-1,d=>d.recipes[0].ingredients[0].productId='absent',d=>d.recipes[0].loss=100,d=>d.recipes[0].extra=Infinity,d=>d.recipes[0].ingredients=[],d=>d.products[0].name={}]){const d=structuredClone(db);mutate(d);assert.throws(()=>core.validate(d));}});
 test('JSON exporté compatible avec la restauration',()=>{assert.deepEqual(core.validate(JSON.parse(JSON.stringify(db))),db);});
+
+test('Coût TTC : TVA propre aux ingrédients, pertes et TVA des frais',()=>{
+ const products=[{id:'a',price:10,volume:100,tax:20,confirmed:true},{id:'b',price:5,volume:100,tax:5.5,confirmed:true}];
+ const r={ingredients:[{productId:'a',cl:10},{productId:'b',cl:20}],loss:10,extra:0.5,extraTax:10,tax:20};
+ const c=core.cost(r,products);approx(c.value,2/0.9+0.5);approx(c.ttc,(1.2+1.055)/0.9+0.55);
+ r.tax=5.5;approx(core.cost(r,products).ttc,c.ttc);
+});
+test('Anciennes recettes : TVA des frais par défaut et coût TTC partiel',()=>{
+ const r={ingredients:[{productId:'absent',cl:10}],loss:0,extra:1};
+ const c=core.cost(r,db.products);approx(c.ttc,1.2);assert.equal(c.complete,false);
+});
+test('Catégories : création, doublons, validation et export',()=>{
+ const data=structuredClone(db);assert.equal(core.addCategory(data,'  Sans   alcool  '),'Sans alcool');
+ assert.throws(()=>core.addCategory(data,'SANS ALCOOL'));assert.throws(()=>core.addCategory(data,' '));
+ assert.ok(core.categoryList(data).includes('Vins'));assert.ok(core.validate(JSON.parse(JSON.stringify(data))).categories.includes('Sans alcool'));
+ data.categories=[{}];assert.throws(()=>core.validate(data));
+});
+test('Migration des vins : ajouts uniques sans écraser les recettes modifiées',()=>{
+ const data=structuredClone(db);data.updates=data.updates.filter(x=>x!=='defaults-2026-10-15-export-v1');
+ data.recipes=data.recipes.slice(0,11);data.recipes[10].price=6;delete data.categories;
+ assert.equal(core.migrate(data,db),true);assert.equal(data.recipes.length,20);assert.equal(data.recipes[10].price,6);
+ data.recipes.pop();assert.equal(core.migrate(data,db),false);assert.equal(data.recipes.length,19);core.validate(data);
+});
+test('TVA des frais invalide rejetée',()=>{
+ const data=structuredClone(db);data.recipes[0].extraTax=-1;assert.throws(()=>core.validate(data));
+});
