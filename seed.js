@@ -603,6 +603,7 @@ globalThis.BAR_SEED = {
     "totalTTC": 957.49
   },
   "categories": [
+    "Non défini",
     "Apéritifs",
     "Bières",
     "Liqueurs",

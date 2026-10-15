@@ -43,3 +43,68 @@ test('Migration des vins : ajouts uniques sans écraser les recettes modifiées'
 test('TVA des frais invalide rejetée',()=>{
  const data=structuredClone(db);data.recipes[0].extraTax=-1;assert.throws(()=>core.validate(data));
 });
+
+test('Non défini : toujours présente, première et protégée',()=>{
+ const data=structuredClone(db);data.categories=[];
+ assert.equal(core.categoryList(data)[0],'Non défini');
+ for(const name of ['Non défini','  NON   DÉFINI  ']){
+  assert.throws(()=>core.renameCategory(data,name,'Autre'));
+  assert.throws(()=>core.deleteCategory(data,name));
+  assert.throws(()=>core.addCategory(data,name));
+ }
+});
+test('Renommage : propagation aux produits et boissons sans changer leurs autres données',()=>{
+ const data=structuredClone(db),before=structuredClone(db);
+ assert.equal(core.renameCategory(data,'Vins',' Vins   tranquilles '),'Vins tranquilles');
+ for(const collection of ['products','recipes']){
+  data[collection].forEach((item,i)=>assert.deepEqual(item,{...before[collection][i],category:before[collection][i].category==='Vins'?'Vins tranquilles':before[collection][i].category}));
+ }
+ assert.ok(!core.categoryList(data).includes('Vins'));assert.equal(core.migrate(data,db),false);
+});
+test('Renommage : collisions, noms vides et catégorie absente sans mutation',()=>{
+ const data=structuredClone(db),before=structuredClone(db);
+ for(const [from,to] of [['Vins','Bières'],['Vins','non défini'],['Vins',' '],['Vins','a'.repeat(81)],['Absente','Autre']]){
+  assert.throws(()=>core.renameCategory(data,from,to));assert.deepEqual(data,before);
+ }
+});
+test('Suppression : reclassement sûr, sauvegarde et absence de résurrection',()=>{
+ const data=structuredClone(db),before=structuredClone(db);
+ core.deleteCategory(data,'Vins');
+ for(const collection of ['products','recipes']){
+  assert.equal(data[collection].length,before[collection].length);
+  data[collection].forEach((item,i)=>assert.deepEqual(item,{...before[collection][i],category:before[collection][i].category==='Vins'?'Non défini':before[collection][i].category}));
+ }
+ const restored=core.validate(JSON.parse(JSON.stringify(data)));
+ assert.equal(core.migrate(restored,db),false);assert.ok(!core.categoryList(restored).includes('Vins'));
+ core.addCategory(restored,'Vide');core.deleteCategory(restored,'Vide');assert.ok(!core.categoryList(restored).includes('Vide'));
+});
+test('Migration des catégories vides et variantes de Non défini',()=>{
+ const data=structuredClone(db);delete data.categories;
+ data.products[0].category=' ';data.recipes[0].category=' NON   DÉFINI ';
+ assert.equal(core.migrate(data,db),true);
+ assert.equal(data.products[0].category,'Non défini');assert.equal(data.recipes[0].category,'Non défini');
+ assert.equal(data.categories.filter(c=>c==='Non défini').length,1);
+ assert.equal(core.migrate(data,db),false);
+});
+
+test('Tri numérique HT, TTC, prix et marge dans les deux sens',()=>{
+ const products=[{id:'a',price:10,volume:100,tax:20,confirmed:true},{id:'b',price:11,volume:100,tax:0,confirmed:true}];
+ const make=(id,productId,price)=>({id,ingredients:[{productId,cl:10}],loss:0,extra:0,price,tax:20});
+ const rows=[make('a','a',10),make('b','b',2),make('unknown','missing',null)];
+ assert.deepEqual(core.sortRecipes(rows,products,'costHT').map(r=>r.id),['a','b','unknown']);
+ assert.deepEqual(core.sortRecipes(rows,products,'costTTC').map(r=>r.id),['b','a','unknown']);
+ assert.deepEqual(core.sortRecipes(rows,products,'price').map(r=>r.id),['b','a','unknown']);
+ assert.deepEqual(core.sortRecipes(rows,products,'rate').map(r=>r.id),['b','a','unknown']);
+ for(const key of ['costHT','costTTC','price','rate']){
+  const asc=core.sortRecipes(rows,products,key),desc=core.sortRecipes(rows,products,key,'desc');
+  assert.deepEqual(desc.map(r=>r.id),[asc[1].id,asc[0].id,'unknown']);
+ }
+ assert.deepEqual(rows.map(r=>r.id),['a','b','unknown']);
+});
+test('Tri stable : zéros, égalités, valeurs absentes et liste vide',()=>{
+ const make=(id,price)=>({id,ingredients:[{productId:'moretti',cl:25}],loss:0,extra:0,price,tax:20});
+ const rows=[make('b',4),make('a',4),make('c',null)];
+ assert.deepEqual(core.sortRecipes(rows,db.products,'price','desc').map(r=>r.id),['b','a','c']);
+ assert.deepEqual(core.sortRecipes([],db.products,'rate'),[]);
+ assert.deepEqual(core.sortRecipes(rows,db.products,''),rows);
+});

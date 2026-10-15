@@ -62,3 +62,13 @@ Le tableau de rentabilité affiche les coûts HT et TTC côte à côte. Le coût
 Le filtre de catégorie de l’analyse s’applique au tableau, aux indicateurs de boissons et au choix du simulateur. L’export CSV inclut toutes les boissons avec leur catégorie et leurs coûts HT/TTC.
 
 Les catégories se choisissent dans une liste commune aux produits et aux boissons. Utiliser « Nouvelle catégorie » dans un formulaire ou le panneau « Catégories » dans « Données & sauvegardes » pour en créer une. Elles sont incluses dans l’export JSON, même lorsqu’elles ne sont pas utilisées. Les anciennes sauvegardes récupèrent automatiquement leurs catégories à partir des produits et recettes.
+
+## Modifier ou supprimer une catégorie
+
+Dans « Données & sauvegardes », le panneau « Catégories » permet de renommer une catégorie puis de cliquer sur « Enregistrer », ou de la supprimer après confirmation. Le renommage se répercute sur tous ses produits et boissons. La suppression conserve ces éléments et les classe dans « Non défini ».
+
+« Non défini » est toujours disponible, sélectionné par défaut pour les nouveaux produits et boissons, et protégé contre le renommage et la suppression. Au chargement des anciennes sauvegardes, les catégories vides y sont rattachées et les variantes de casse/espacement sont harmonisées. Les changements sont inclus dans les exports JSON.
+
+## Filtres et tri
+
+La carte des boissons combine recherche par nom et filtre de catégorie. Dans l’analyse, cliquer sur les en-têtes « Coût HT », « Coût TTC », « Prix TTC » ou « Marge / CA HT » alterne le tri numérique croissant et décroissant. Une flèche indique le sens actif. Les valeurs manquantes ou les coûts incomplets restent à la fin. Le tri s’applique aux boissons de la catégorie filtrée ; la marge triée est le pourcentage affiché.

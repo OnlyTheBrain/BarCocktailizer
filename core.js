@@ -1,5 +1,7 @@
 (function(root){
   'use strict';
+  const DEFAULT_CATEGORY='Non défini';
+  const categoryKey=value=>value.trim().replace(/\s+/g,' ').toLocaleLowerCase('fr');
   const finite = n => typeof n === 'number' && Number.isFinite(n);
   function cost(recipe, products) {
     let base=0, baseTTC=0; const warnings=[];
@@ -66,24 +68,75 @@
       data.updates.push('defaults-2026-10-15-export-v1');
       changed=true;
     }
+    const canonical=new Map(categoryList(data).map(c=>[categoryKey(c),c]));
+    for(const item of [...data.products,...data.recipes]){
+      const name=canonical.get(categoryKey(item.category))||DEFAULT_CATEGORY;
+      if(item.category!==name){item.category=name;changed=true;}
+    }
     const categories=categoryList(data);
     if(JSON.stringify(categories)!==JSON.stringify(data.categories)){data.categories=categories;changed=true;}
     return changed;
   }
   function categoryList(data){
     const names=[...(data.categories||[]),...data.products.map(p=>p.category),...data.recipes.map(r=>r.category)];
-    const unique=new Map();
-    for(const value of names){const name=value.trim();if(name&&!unique.has(name.toLocaleLowerCase('fr')))unique.set(name.toLocaleLowerCase('fr'),name);}
-    return [...unique.values()].sort((a,b)=>a.localeCompare(b,'fr'));
+    const unique=new Map([[categoryKey(DEFAULT_CATEGORY),DEFAULT_CATEGORY]]);
+    for(const value of names){
+      const name=value.trim().replace(/\s+/g,' ');
+      if(name&&!unique.has(categoryKey(name)))unique.set(categoryKey(name),name);
+    }
+    return [DEFAULT_CATEGORY,...[...unique.values()].filter(c=>c!==DEFAULT_CATEGORY).sort((a,b)=>a.localeCompare(b,'fr'))];
   }
-  function addCategory(data,value){
+  function categoryName(value){
     const name=value.trim().replace(/\s+/g,' ');
     if(!name||name.length>80)throw Error('Saisissez un nom de catégorie de 1 à 80 caractères.');
-    const categories=categoryList(data),existing=categories.find(c=>c.toLocaleLowerCase('fr')===name.toLocaleLowerCase('fr'));
-    if(existing)throw Error('Cette catégorie existe déjà : '+existing);
-    data.categories=[...categories,name].sort((a,b)=>a.localeCompare(b,'fr'));
     return name;
   }
-  const api={cost,metrics,targetPrice,validate,migrate,categoryList,addCategory}; root.BarCore=api;
+  function addCategory(data,value){
+    const name=categoryName(value),categories=categoryList(data),existing=categories.find(c=>categoryKey(c)===categoryKey(name));
+    if(existing)throw Error('Cette catégorie existe déjà : '+existing);
+    data.categories=[...categories,name];
+    data.categories=categoryList(data);
+    return name;
+  }
+  function editableCategory(data,value){
+    const key=categoryKey(value);
+    if(key===categoryKey(DEFAULT_CATEGORY))throw Error('La catégorie « Non défini » est protégée.');
+    const name=categoryList(data).find(c=>categoryKey(c)===key);
+    if(!name)throw Error('Catégorie introuvable.');
+    return name;
+  }
+  function renameCategory(data,source,value){
+    const previous=editableCategory(data,source),name=categoryName(value);
+    const categories=categoryList(data);
+    if(categories.some(c=>categoryKey(c)!==categoryKey(previous)&&categoryKey(c)===categoryKey(name)))throw Error('Cette catégorie existe déjà : '+name);
+    for(const item of [...data.products,...data.recipes]){
+      if(categoryKey(item.category)===categoryKey(previous))item.category=name;
+    }
+    data.categories=categories.map(c=>categoryKey(c)===categoryKey(previous)?name:c);
+    data.categories=categoryList(data);
+    return name;
+  }
+  function deleteCategory(data,source){
+    const previous=editableCategory(data,source),categories=categoryList(data);
+    for(const item of [...data.products,...data.recipes]){
+      if(categoryKey(item.category)===categoryKey(previous))item.category=DEFAULT_CATEGORY;
+    }
+    data.categories=categories.filter(c=>categoryKey(c)!==categoryKey(previous));
+    data.categories=categoryList(data);
+  }
+  function sortRecipes(recipes,products,key,direction='asc'){
+    if(!['costHT','costTTC','price','rate'].includes(key))return [...recipes];
+    const sign=direction==='desc'?-1:1;
+    return recipes.map((recipe,index)=>{
+      const c=cost(recipe,products),m=metrics(c.value,recipe.price,recipe.tax);
+      const value=key==='price'?recipe.price:!c.complete?null:key==='costHT'?c.value:key==='costTTC'?c.ttc:m.rate;
+      return {recipe,index,value};
+    }).sort((a,b)=>{
+      if(a.value===null&&b.value===null)return a.index-b.index;
+      if(a.value===null)return 1;if(b.value===null)return -1;
+      return (a.value-b.value)*sign||a.index-b.index;
+    }).map(item=>item.recipe);
+  }
+  const api={cost,metrics,targetPrice,validate,migrate,categoryList,addCategory,renameCategory,deleteCategory,DEFAULT_CATEGORY,sortRecipes}; root.BarCore=api;
   if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
