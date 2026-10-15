@@ -32,6 +32,29 @@
     }
     return data;
   }
-  const api={cost,metrics,targetPrice,validate}; root.BarCore=api;
+  function migrate(data, seed){
+    const update='moretti-formats-v1';
+    let changed=false;
+    data.updates=Array.isArray(data.updates)?data.updates:[];
+    const copy=value=>JSON.parse(JSON.stringify(value));
+    if(!data.updates.includes(update)){
+    if(!data.products.some(p=>p.id==='moretti'))data.products.push(copy(seed.products.find(p=>p.id==='moretti')));
+    for(const id of ['moretti-pinte','moretti-demi','moretti-pichet']){
+      if(!data.recipes.some(r=>r.id===id))data.recipes.push(copy(seed.recipes.find(r=>r.id===id)));
+    }
+    data.updates.push(update);
+    changed=true;
+    }
+    if(!data.updates.includes('moretti-prices-v1')){
+      for(const [id,price] of Object.entries({'moretti-pinte':7,'moretti-demi':4,'moretti-pichet':13})){
+        const recipe=data.recipes.find(r=>r.id===id);
+        if(recipe)recipe.price=price;
+      }
+      data.updates.push('moretti-prices-v1');
+      changed=true;
+    }
+    return changed;
+  }
+  const api={cost,metrics,targetPrice,validate,migrate}; root.BarCore=api;
   if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

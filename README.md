@@ -47,3 +47,8 @@ Déposer les cinq fichiers applicatifs à la racine d’un dépôt GitHub, puis 
 ## Vérifier les calculs
 
 Avec Node.js installé : `node --test tests/core.test.cjs`.
+
+## Formats Moretti ajoutés
+
+Pinte 50 cl à 7 € TTC, demi-pinte 25 cl à 4 € TTC et pichet 1 L à 13 € TTC. Coûts HT hors pertes : 2,09 €, 1,045 € et 4,18 €. Les anciennes sauvegardes reçoivent automatiquement ces formats au prochain chargement, avec les prix Moretti confirmés ; les autres prix et recettes sont conservés.
+

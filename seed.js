@@ -1,6 +1,7 @@
 /* Données transcrites de FA000096 et cocktails.pdf. Aucun prix de vente inventé. */
 globalThis.BAR_SEED = {
   version: 1,
+  updates: ['moretti-formats-v1','moretti-prices-v1'],
   products: [
     ['moretti','Moretti blonde · Blade 8 L','Bières',800,33.44,3,20,'24 L facturés à 4,18 € HT/L, soit 3 fûts de 8 L.'],
     ['menthe','Biarritz Bonheur · Menthe','Spiritueux',70,15.90,2,20,''],
@@ -30,7 +31,10 @@ globalThis.BAR_SEED = {
     ['kirpetillant','Kir Pétillant','Apéritifs',[['cassis',2],['prosecco',8]],'Servir dans un verre à flûte.'],
     ['biarritzmenthe','Biarritz Bonheur · Menthe','Apéritifs',[['menthe',5]],'3 gros glaçons dans un petit verre ballon.'],
     ['biarritzcitron','Biarritz Bonheur · Citron','Apéritifs',[['citron',5]],'3 gros glaçons dans un petit verre ballon.'],
-    ['biarritzframboise','Biarritz Bonheur · Framboise','Apéritifs',[['framboise',5]],'3 gros glaçons dans un petit verre ballon.']
-  ].map(([id,name,category,ingredients,note])=>({id,name,category,ingredients:ingredients.map(([productId,cl])=>({productId,cl})),note,price:({hugo:10,aperolspritz:9,kir:4.5,kirpetillant:8})[id]||8,tax:20,loss:0,extra:0})),
+    ['biarritzframboise','Biarritz Bonheur · Framboise','Apéritifs',[['framboise',5]],'3 gros glaçons dans un petit verre ballon.'],
+    ['moretti-pinte','Moretti · Pinte 50 cl','Bières',[['moretti',50]],'Bière pression. Servir 50 cl.'],
+    ['moretti-demi','Moretti · Demi-pinte 25 cl','Bières',[['moretti',25]],'Bière pression. Servir 25 cl.'],
+    ['moretti-pichet','Moretti · Pichet 1 L','Bières',[['moretti',100]],'Bière pression. Servir 1 litre (100 cl).']
+  ].map(([id,name,category,ingredients,note])=>({id,name,category,ingredients:ingredients.map(([productId,cl])=>({productId,cl})),note,price:({hugo:10,aperolspritz:9,kir:4.5,kirpetillant:8,'moretti-pinte':7,'moretti-demi':4,'moretti-pichet':13})[id]||8,tax:20,loss:0,extra:0})),
   invoice: {reference:'FA000096',date:'30/09/2026',goods:767.17,deposits:50,totalHT:817.17,totalTTC:957.49}
 };
